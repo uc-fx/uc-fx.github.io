@@ -1,0 +1,11 @@
+title: UCFX Project
+description: Universal Composability using Effects and Handlers
+show_downloads: false
+google_analytics:
+theme: jekyll-theme-cayman
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - flake.nix
+  - flake.lock
+  - gemset.nix
