@@ -1,0 +1,104 @@
+/* Team members */
+.member {
+    display: inline-block;
+    width: 140px;
+    padding-bottom: 15px;
+}
+
+.member .member-photograph {
+    text-align: center;
+    display: block;
+    width: 100%;
+}
+
+.member-photograph img {
+    border-radius: 40%;
+    border: 3px solid $border-color;
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+}
+
+.member .member-role, .member .member-name {
+    display: block;
+    text-align: center;
+}
+
+.member-role {
+    font-style: italic;
+    font-size: 85%;
+}
+
+/* Flexible 3 cell grid */
+ul.grid-3 {
+    text-align: center;
+    justify-items: start;
+}
+
+@media only screen and (min-width: 900px) {
+    ul.grid-3 {
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+    }
+}
+
+@media only screen and (min-width: 600px) and (max-width:900px) {
+    ul.grid-3 {
+        display: grid;
+        grid-template-columns: auto 1fr;
+    }
+}
+
+@media only screen and (min-width: 200px) and (max-width: 600px) {
+    ul.grid-3 {
+        display: block;
+        padding-left: 0;
+        list-style-position: inside;
+    }
+}
+
+ul.grid-3 li {
+    display: inline-block;
+}
+
+
+/* Flexible 5 cell grid */
+ul.grid-5 {
+    text-align: center;
+    justify-items: start;
+}
+
+@media only screen and (min-width: 900px) {
+    ul.grid-5 {
+        display: grid;
+        grid-template-columns: auto auto auto auto 1fr;
+    }
+}
+
+@media only screen and (min-width: 600px) and (max-width:899px) {
+    ul.grid-5 {
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+    }
+}
+
+@media only screen and (min-width: 200px) and (max-width: 599px) {
+    ul.grid-5 {
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+        padding-left: 0;
+        list-style-position: inside;
+    }
+}
+
+ul.grid-5 li {
+    display: inline-block;
+}
+
+/* Misc: do not display member photographs nor project partners logos
+   on tiny screens. */
+@media only screen and (max-width: 200px) {
+    .member-photograph img {
+        display: none;
+    }
+}

@@ -1,0 +1,27 @@
+- category: Core team
+  people:
+    - name: Sam Lindley
+      website: https://homepages.inf.ed.ac.uk/slindley/
+      image: sam.jpg
+      role: Principal Investigator
+    - name: Markulf Kohlweiss
+      website: https://homepages.inf.ed.ac.uk/mkohlwei/
+      role: Co-Investigator
+      image: markulf.png
+    - name: Jesse Sigal
+      website: https://jsigal.com
+      image: jesse.png
+      role: Researcher
+- category: Collaborators
+  people:
+    - name: Pooya Farshim
+      website: https://farshim.github.io/
+      image: pooya.png
+- category: Visiting researchers
+  people:
+    - name: Sabine Oechsner
+      website: https://soechsner.de/
+      image: sabine.webp
+    - name: Danel Ahman
+      website: https://danel.ahman.ee/
+      image: danel.jpg

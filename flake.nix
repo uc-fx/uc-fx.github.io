@@ -72,7 +72,6 @@
         echo "Bundler env: ${env}"
         ${env}/bin/bundler exec -- jekyll serve --trace --incremental
       '';
-
       # nix run .#generate -> Re-generate the gemfile, lockfile, build environment and gemset.nix
       #   To use only if added a dependency, bumped a version, etc ...
       generate = simple_script "generate_website_env" [ pkgs.bundix pkgs.gcc ] ''
