@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Tree-sitter Text Field Highlight</title>
+        <style>
+            :root {
+                color-scheme: light dark;
+            }
+
+            body {
+              margin: 0;
+              padding: 24px;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+              background: #24273a;
+              color: #cad3f5;
+              min-height: 90vh;
+              display: flex;
+              flex-direction: column;
+            }
+
+            h1 {
+                margin: 0 0 12px;
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            .editor-wrap {
+              position: relative;
+              width: min(900px, 100%);
+              flex: 1;
+              border: 1px solid #363a4f;
+              border-radius: 10px;
+              overflow: hidden;
+              background: #1e2030;
+            }
+
+            .layer {
+                position: absolute;
+                inset: 0;
+                margin: 0;
+                padding: 14px;
+                overflow: auto;
+                white-space: pre;
+                tab-size: 2;
+                line-height: 1.5;
+                font-size: 14px;
+                font-family: inherit;
+            }
+
+            #highlight {
+              color: #cad3f5;
+              pointer-events: none;
+            }
+
+            #input {
+              resize: none;
+              border: 0;
+              outline: 0;
+              background: transparent;
+              color: transparent;
+              caret-color: #cad3f5;
+            }
+
+            /* Syntax colors */
+            .tok-keyword { color: #8aadf4; }
+            .tok-string  { color: #a6da95; }
+            .tok-number  { color: #f5a97f; }
+            .tok-comment { color: #6e738d; font-style: italic; }
+            .tok-variable { color: #cad3f5; }
+            .tok-variable-parameter { color: #eed49f; }
+            .tok-function { color: #b7bdf8; font-weight: bold; }
+            .tok-signal { color: #b7bdf8; font-style: italic; }
+            .tok-request { color: #b7bdf8; font-style: italic; }
+            .tok-class { color: #f5bde6; font-weight: bold; }
+            .tok-constant-builtin { color: #ed8796; }
+            .tok-operator { color: #91d7e3; }
+            .tok-punctuation-delimiter { color: #a5adcb; }
+            .tok-punctuation-bracket { color: #b8c0e0; }
+            .tok-local { color: #f5a97f; }
+
+            .status {
+              margin-top: 10px;
+              font-size: 12px;
+              color: #a5adcb;
+            }
+
+            .status-ok {
+              color: #a6da95;
+            }
+
+            .status-error {
+              color: #ed8796;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Tree-sitter syntax highlighting in a text field (UCFX)</h1>
+
+        <div class="editor-wrap">
+            <pre id="highlight" class="layer"></pre>
+            <textarea id="input" class="layer" spellcheck="false">
+#lang ucfx
+
+protocol p1:
+  initialize:
+    early := false
+
+  define method(x):
+    if early:
+      j &lt;~ ?request("p1(" ++ x ++ ")")
+      return j
+    else:
+      early := true
+      a &lt;~ ?request("p1(" ++ x ++ ")")
+      b &lt;= p2.method(a)
+      c &lt;~ ?request("p1(" ++ b ++ ")")
+      d &lt;~ ?request("p1(" ++ c ++ ")")
+      return d
+
+protocol p2:
+  define method(x):
+    s &lt;~ ?request("p2(" ++ x ++ ")")
+    t &lt;= p1.method(s)
+    return t
+
+simulator s0:
+  initialize:
+    fwd := 4
+
+  handle ?request(msg):
+    r := ""
+    if fwd > 0:
+      fwd := fwd - 1
+      r &lt;~ ?request(msg)
+    else:
+      r := "{0|" ++ msg ++ "}"
+    resume r
+
+simulator s1:
+  initialize:
+    fwd := 3
+
+  handle ?request(msg):
+    r := ""
+    if fwd > 0:
+      fwd := fwd - 1
+      r &lt;~ ?request(msg)
+    else:
+      r := "{1|" ++ msg ++ "}"
+    resume r
+
+simulator s2:
+  initialize:
+    fwd := 2
+
+  handle ?request(msg):
+    r := ""
+    if fwd > 0:
+      fwd := fwd - 1
+      r &lt;~ ?request(msg)
+    else:
+      r := "{2|" ++ msg ++ "}"
+    resume r
+
+simulator s3:
+  external:
+    p1
+
+  initialize:
+    call := true
+    fwd := 1
+
+  handle ?request(msg):
+    r := ""
+    if call:
+      call := false
+      res &lt;= p1.method("Y")
+      r &lt;~ ?request("&lt;" ++ res ++ "," ++ msg ++ ">")
+    else:
+      if fwd > 0:
+        fwd := fwd - 1
+        r &lt;~ ?request(msg)
+      else:
+        r := "{3|" ++ msg ++ "}"
+    resume r
+
+environment main:
+  body:
+    k &lt;~ create(p1.method)
+    res := ""
+    msg := "X"
+
+    while (res = ""):
+      run k(msg):
+        return(x):
+          res := x
+        ?request(k0, s):
+          k := k0
+          msg := "{outer|" ++ s ++ "}"
+
+    return res
+
+topology:
+  s0
+  s1
+  s2
+  s3
+  main
+</textarea>
+        </div>
+
+        <div id="status" class="status">Loading tree-sitter…</div>
+
+        <script type="module">
+            const input = document.getElementById("input");
+            const highlight = document.getElementById("highlight");
+            const status = document.getElementById("status");
+
+            const escapeHtml = (s) =>
+                s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+
+            function syncScroll() {
+                highlight.scrollTop = input.scrollTop;
+                highlight.scrollLeft = input.scrollLeft;
+            }
+
+            const captureClassMap = {
+                keyword: "tok-keyword",
+                string: "tok-string",
+                number: "tok-number",
+                comment: "tok-comment",
+                variable: "tok-variable",
+                "variable.parameter": "tok-variable-parameter",
+                function: "tok-function",
+                signal: "tok-signal",
+                request: "tok-request",
+                class: "tok-class",
+                "constant.builtin": "tok-constant-builtin",
+                operator: "tok-operator",
+                "punctuation.delimiter": "tok-punctuation-delimiter",
+                "punctuation.bracket": "tok-punctuation-bracket",
+            };
+
+            function toClass(captureName, isLocal = false) {
+                const baseClass = captureClassMap[captureName] ?? "";
+                if (!baseClass) return "";
+                if (!isLocal) return baseClass;
+                if (captureName === "variable" || captureName === "variable.parameter") {
+                    return `${baseClass} tok-local`;
+                }
+                return baseClass;
+            }
+
+            function renderHighlighted(text, captures, localRanges) {
+                captures.sort((a, b) => a.node.startIndex - b.node.startIndex);
+
+                let html = "";
+                let index = 0;
+
+                for (const cap of captures) {
+                    const start = cap.node.startIndex;
+                    const end = cap.node.endIndex;
+                    if (start < index || end <= start) continue; // skip overlaps
+
+                    html += escapeHtml(text.slice(index, start));
+                    const isLocal = localRanges.some((range) => range.start === start && range.end === end);
+                    const cls = toClass(cap.name, isLocal);
+                    const token = escapeHtml(text.slice(start, end));
+                    html += cls ? `<span class="${cls}">${token}</span>` : token;
+                    index = end;
+                }
+
+                html += escapeHtml(text.slice(index));
+                return html || " ";
+            }
+
+            async function loadParser() {
+                const sources = [
+                    "https://cdn.jsdelivr.net/npm/web-tree-sitter@0.25.10/+esm",
+                    "https://unpkg.com/web-tree-sitter@0.25.10/dist/web-tree-sitter.js",
+                ];
+
+                let lastError = null;
+                for (const url of sources) {
+                    try {
+                        const mod = await import(url);
+                        const parser = mod?.default ?? mod?.Parser ?? mod?.TreeSitter ?? mod;
+                        const language = mod?.Language ?? parser?.Language ?? mod?.default?.Language;
+                        if (parser) return { parser, language };
+                    } catch (err) {
+                        lastError = err;
+                    }
+                }
+
+                const error = new Error("Unable to load web-tree-sitter module.");
+                error.cause = lastError;
+                throw error;
+            }
+
+            async function main() {
+                try {
+                    const loaded = await loadParser();
+                    const Parser = loaded?.parser;
+                    const Language = loaded?.language;
+                    if (!Parser?.init) {
+                        throw new Error("web-tree-sitter Parser missing init().");
+                    }
+                    if (!Language?.load) {
+                        throw new Error("web-tree-sitter Language missing load().");
+                    }
+                    await Parser.init();
+
+                    const Lang = await Language.load("assets/tree-sitter-ucfx.wasm");
+
+                    const parser = new Parser();
+                    parser.setLanguage(Lang);
+
+                    const queryText = await fetch("assets/queries/highlights.scm").then((res) => {
+                        if (!res.ok) throw new Error("Failed to load assets/queries/highlights.scm");
+                        return res.text();
+                    });
+                    const query = Lang.query(queryText);
+
+                    const localsText = await fetch("assets/queries/locals.scm").then((res) => {
+                        if (!res.ok) throw new Error("Failed to load assets/queries/locals.scm");
+                        return res.text();
+                    });
+                    const localsQuery = Lang.query(localsText);
+
+                    function update() {
+                        const text = input.value;
+                        const tree = parser.parse(text);
+                        const captures = query.captures(tree.rootNode);
+                        const localsCaptures = localsQuery.captures(tree.rootNode)
+                            .sort((a, b) => a.node.startIndex - b.node.startIndex);
+
+                        const scopes = [{ endIndex: Number.POSITIVE_INFINITY, defs: new Set() }];
+                        const localRanges = [];
+
+                        for (const cap of localsCaptures) {
+                            const start = cap.node.startIndex;
+                            const end = cap.node.endIndex;
+
+                            while (scopes.length > 1 && start >= scopes[scopes.length - 1].endIndex) {
+                                scopes.pop();
+                            }
+
+                            if (cap.name === "local.scope") {
+                                scopes.push({ endIndex: end, defs: new Set() });
+                                continue;
+                            }
+
+                            const identifier = text.slice(start, end);
+                            if (cap.name === "local.definition") {
+                                scopes[scopes.length - 1].defs.add(identifier);
+                                localRanges.push({ start, end });
+                                continue;
+                            }
+
+                            if (cap.name === "local.reference") {
+                                const isLocal = scopes.some((scope) => scope.defs.has(identifier));
+                                if (isLocal) {
+                                    localRanges.push({ start, end });
+                                }
+                            }
+                        }
+
+                        const hasError = typeof tree.rootNode.hasError === "function"
+                            ? tree.rootNode.hasError()
+                            : tree.rootNode.hasError;
+                        status.textContent = hasError ? "Parsed with errors." : "Parsed OK.";
+                        status.classList.toggle("status-ok", !hasError);
+                        status.classList.toggle("status-error", hasError);
+                        highlight.innerHTML = renderHighlighted(text, captures, localRanges);
+                        syncScroll();
+                    }
+
+                    input.addEventListener("input", update);
+                    input.addEventListener("scroll", syncScroll);
+
+                    update();
+                    status.textContent = "Ready.";
+                } catch (err) {
+                    console.error(err);
+                    status.textContent = "Failed to load tree-sitter. Check network/CDN access.";
+                    highlight.textContent = input.value;
+                }
+            }
+
+            main();
+        </script>
+    </body>
+</html>
