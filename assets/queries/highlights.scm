@@ -10,15 +10,15 @@
 (procedure_definition
   party: (identifier)? @variable.parameter
   name: (identifier) @function
-  arguments: (parameter_list (identifier) @variable.parameter))
+  arguments: (parameter_list (identifier) @variable.parameter)?)
 
 (handle_signal_definition
   signal: (identifier) @signal
-  arguments: (parameter_list (identifier) @variable.parameter))
+  arguments: (parameter_list (identifier) @variable.parameter)?)
 
 (handle_request_definition
   request: (identifier) @request
-  arguments: (parameter_list (identifier) @variable.parameter))
+  arguments: (parameter_list (identifier) @variable.parameter)?)
 
 (internal_call_statement
   targets: (parameter_list (identifier) @variable)
